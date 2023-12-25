@@ -77,7 +77,9 @@ public class WriteExifMetadata {
                     final TiffOutputField dateTimeOutputField = new TiffOutputField(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL, FieldType.ASCII, updatedDateString.length(), updatedDateString.getBytes());
                     exifDirectory.add(dateTimeOutputField);
                 }catch (Exception e){
-                    logger.error("Error to write DATETIME " + dataTime + " TO file " + dst.getName() + " FROM " + jpegImageFile.getName());
+                    String errorMessage = "Error to write DATETIME " + dataTime + " TO file " + dst.getName() + " FROM " + jpegImageFile.getName();
+                    Transformer.errorList.add(errorMessage);
+                    logger.error(errorMessage);
                     success = false;
                 }
             }
@@ -86,22 +88,16 @@ public class WriteExifMetadata {
                 try {
                     String[] locationData = location.split("\\+");
 
-                    int longitudeIndex = 0;
-                    int latitudeIndex = 0;
-                    if(locationData.length == 4){
-                        longitudeIndex = 2;
-                        latitudeIndex = 1;
-                    }else if(locationData.length == 3){
-                        longitudeIndex = 1;
-                        latitudeIndex = 0;
-                    }
-
-                    final double longitude = Double.parseDouble(locationData[longitudeIndex]);
-                    final double latitude = Double.parseDouble(locationData[latitudeIndex]);
+                    String longitudeStr = locationData[2].endsWith("/") ? locationData[2].replace("/", "") : locationData[2];
+                    String latitudeStr = locationData[1];
+                    final double longitude = Double.parseDouble(longitudeStr);
+                    final double latitude = Double.parseDouble(latitudeStr);
 
                     outputSet.setGPSInDegrees(longitude, latitude);
                 }catch (Exception e){
-                    logger.error("Error to write LOCATION " + location + " TO file " + dst.getName() + " FROM " + jpegImageFile.getName());
+                    String errorMessage = "Error to write LOCATION " + location + " TO file " + dst.getName() + " FROM " + jpegImageFile.getName();
+                    Transformer.errorList.add(errorMessage);
+                    logger.error(errorMessage);
                 }
             }
 

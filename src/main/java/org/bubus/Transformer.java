@@ -16,7 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Transformer {
     static final Logger logger = Logger.getLogger(Transformer.class);
-    private final String COMMAND_TRANSFORM = "ffmpeg -i %s -vf fps=1 %s(%%d).jpeg";
+    private final int frameCount = 1;
+    private final String COMMAND_TRANSFORM = "ffmpeg -ss 00:00:01 -i %s -frames:v " + frameCount + " %s(%%d).jpeg";
     private final String COMMAND_GET_DURATION = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s";
     private final float MAX_DURATION = 3.0f;
     private ProgressBar pbTransform;
@@ -24,6 +25,8 @@ public class Transformer {
     private int fileCount = 0;
     private int allFileCount = 0;
     private List<File> files = new ArrayList<>();
+    public static List<String> errorList = Collections.synchronizedList(new ArrayList<String>());
+
     public void transform(String rootPath) {
         File root = new File(rootPath);
         setAllFileCount(root);
@@ -46,11 +49,15 @@ public class Transformer {
         pbTransform.start();
         transform();
         pbTransform.stop();
-        logger.debug("Done Transforming");
-
         long endTime = System.currentTimeMillis();
-        Duration duration = Duration.ofMillis(endTime - startTime);
 
+        if(!errorList.isEmpty()) {
+            System.err.println("An NonFatal Errors occurred during execution!");
+            errorList.forEach(System.out::println);
+            System.out.println("See Log for more details");
+        }
+
+        Duration duration = Duration.ofMillis(endTime - startTime);
         long seconds = duration.getSeconds();
         long HH = seconds / 3600;
         long MM = (seconds % 3600) / 60;
@@ -58,9 +65,8 @@ public class Transformer {
         String timeInHHMMSS = String.format("%02d:%02d:%02d", HH, MM, SS);
         System.out.println("Transform Time: " + timeInHHMMSS);
         logger.debug("Transform Time: " + timeInHHMMSS);
-
-        System.out.println("Done!");
-        logger.debug("Done!");
+        logger.debug("Done Transforming");
+        System.out.println("Done Transforming");
     }
 
     public void setAllFileCount(File dir){
@@ -98,7 +104,7 @@ public class Transformer {
     }
 
     private void transform(){
-        files.parallelStream().forEach(file -> {
+        files.stream().forEach(file -> {
             try {
                 File dir = file.getParentFile();
                 Metadata metaData = getMetaData(file);
@@ -110,11 +116,13 @@ public class Transformer {
                         if(!setMetaData(createdFile, metaData))
                             fl.set(false);
                     }catch (Exception ex){
-                        logger.error("Error while set MetaData FROM file" + file.getName() + " DIRECTORIES" + dir.getName());
+                        String errorMessage = "Error while set MetaData FROM file" + file.getName() + " DIRECTORIES" + dir.getName();
+                        errorList.add(errorMessage);
+                        logger.error(errorMessage);
                     }
                     createdFile.delete();
                 });
-                if(fl.get())
+                if(fl.get() && !files.isEmpty())
                     file.delete();
 
                 pbTransform.step();
@@ -133,7 +141,7 @@ public class Transformer {
         final Process process = pb.start();
         process.waitFor();
         List<File> transformedFiles = new ArrayList<>();
-        for(int i = 1; i <= Math.round(MAX_DURATION); i++){
+        for(int i = 1; i <= frameCount; i++){
             File newFile = new File(directory.getPath() + File.separator + fileName.split("\\.")[0] + "(" + i + ")" + ".jpeg");
             if(newFile.exists()){
                 transformedFiles.add(newFile);
@@ -167,12 +175,10 @@ public class Transformer {
         for (Directory directory : metaData.getDirectoriesOfType(QuickTimeMetadataDirectory.class)) {
             location = directory.getDescription(1293);//Location
             dataTime = directory.getDescription(1286);//DataTime
-
-            if(dataTime == null)
-                return false;
-            break;
-
         }
-        return new WriteExifMetadata().changeExifMetadata(file, new File(file.getParent() + File.separator + "tr:" + file.getName()), location, dataTime);
+        if(dataTime == null)
+            return false;
+        else
+            return new WriteExifMetadata().changeExifMetadata(file, new File(file.getParent() + File.separator + "tr:" + file.getName()), location, dataTime);
     }
 }
