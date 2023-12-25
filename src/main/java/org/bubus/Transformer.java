@@ -70,11 +70,12 @@ public class Transformer {
     }
 
     public void setAllFileCount(File dir){
-        allFileCount+=dir.listFiles().length;
-        Arrays.stream(dir.listFiles()).parallel().forEach(file -> {
+        Arrays.stream(dir.listFiles()).forEach(file -> {
             try {
                 if (file.isDirectory())
                     setAllFileCount(file);
+                else
+                    allFileCount++;
             }catch (Exception e){
                 System.err.println("Fatal Error! For more info see logs");
                 logger.error("Error while scanning DIRECTORY " + dir);
@@ -104,7 +105,7 @@ public class Transformer {
     }
 
     private void transform(){
-        files.stream().forEach(file -> {
+        files.stream().parallel().forEach(file -> {
             try {
                 File dir = file.getParentFile();
                 Metadata metaData = getMetaData(file);
