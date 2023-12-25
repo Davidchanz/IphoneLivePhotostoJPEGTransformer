@@ -1,7 +1,6 @@
 package org.bubus;
 
 import com.drew.imaging.ImageProcessingException;
-import com.drew.imaging.*;
 import com.drew.imaging.quicktime.QuickTimeMetadataReader;
 import com.drew.metadata.Directory;
 import com.drew.metadata.Metadata;
@@ -20,29 +19,62 @@ public class Transformer {
     private final String COMMAND_TRANSFORM = "ffmpeg -i %s -vf fps=1 %s(%%d).jpeg";
     private final String COMMAND_GET_DURATION = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s";
     private final float MAX_DURATION = 3.0f;
-    private ProgressBar pb;
+    private ProgressBar pbTransform;
+    private ProgressBar pbInitialization;
     private int fileCount = 0;
+    private int allFileCount = 0;
     private List<File> files = new ArrayList<>();
-    public Duration transform(String rootPath) {
-        Thread animationThread = new Thread(new LoadingAnimation());
-        animationThread.start();
-
+    public void transform(String rootPath) {
         File root = new File(rootPath);
+        setAllFileCount(root);
+        logger.debug("Start Initializing");
+        pbInitialization = new ProgressBar("Initializing", allFileCount);
+        pbInitialization.start();
         initilizeTrasformer(root);
-        animationThread.interrupt();
-        System.out.println();
+        pbInitialization.stop();
+        System.out.println("Files found " + allFileCount);
+        logger.debug("Files Found " + allFileCount);
+        System.out.println("MOV Files found " + fileCount);
+        logger.debug("MOV Files found " + fileCount);
+        logger.debug("Done Initializing");
 
         System.out.println("Start Transforming");
         logger.debug("Start Transforming");
         long startTime = System.currentTimeMillis();
 
-        pb = new ProgressBar("Transform", fileCount);
-        pb.start();
+        pbTransform = new ProgressBar("Transform", fileCount);
+        pbTransform.start();
         transform();
-        pb.stop();
+        pbTransform.stop();
+        logger.debug("Done Transforming");
 
         long endTime = System.currentTimeMillis();
-        return Duration.ofMillis(endTime - startTime);
+        Duration duration = Duration.ofMillis(endTime - startTime);
+
+        long seconds = duration.getSeconds();
+        long HH = seconds / 3600;
+        long MM = (seconds % 3600) / 60;
+        long SS = seconds % 60;
+        String timeInHHMMSS = String.format("%02d:%02d:%02d", HH, MM, SS);
+        System.out.println("Transform Time: " + timeInHHMMSS);
+        logger.debug("Transform Time: " + timeInHHMMSS);
+
+        System.out.println("Done!");
+        logger.debug("Done!");
+    }
+
+    public void setAllFileCount(File dir){
+        allFileCount+=dir.listFiles().length;
+        Arrays.stream(dir.listFiles()).parallel().forEach(file -> {
+            try {
+                if (file.isDirectory())
+                    setAllFileCount(file);
+            }catch (Exception e){
+                System.err.println("Fatal Error! For more info see logs");
+                logger.error("Error while scanning DIRECTORY " + dir);
+                System.exit(1);
+            }
+        });
     }
 
     public void initilizeTrasformer(File dir){
@@ -50,7 +82,7 @@ public class Transformer {
             try {
                 if (file.isDirectory())
                     initilizeTrasformer(file);
-                if (file.getName().endsWith(".MOV"))
+                else if (file.getName().endsWith(".MOV"))
                     if (getDuration(file, dir) <= MAX_DURATION) {
                         fileCount++;
                         files.add(file);
@@ -58,8 +90,10 @@ public class Transformer {
             }catch (Exception e){
                 System.err.println("Fatal Error! For more info see logs");
                 logger.error("Error while scanning DIRECTORY " + dir);
+                pbInitialization.stop();
                 System.exit(1);
             }
+            pbInitialization.step();
         });
     }
 
@@ -83,11 +117,11 @@ public class Transformer {
                 if(fl.get())
                     file.delete();
 
-                pb.step();
+                pbTransform.step();
             }catch (Exception ex){
                 System.err.println("Fatal Error! For more info see logs");
                 logger.error("Error while Transform FORM file " + file.getName() + " DIRECTORIES " + file.getParentFile().getName());
-                pb.stop();
+                pbTransform.stop();
                 System.exit(1);
             }
         });
