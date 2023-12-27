@@ -1,21 +1,28 @@
 package org.bubus;
 
 import org.apache.log4j.Logger;
+import org.bubus.command.Command;
 import org.bubus.command.CommandsResolver;
+import org.bubus.context.Context;
 import org.bubus.validation.CommandsValidator;
+import org.bubus.validation.Validator;
+
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.Scanner;
 
 public class Main {
     static final Logger logger = Logger.getLogger(Transformer.class);
     public static void main(String[] args) {
         Context context = new Context(Main.class, args);
-        CommandsResolver commandsResolver = new CommandsResolver(context.getCommands());
-        CommandsValidator commandsValidator = new CommandsValidator(context.getValidators());
+        CommandsValidator commandsValidator = context.getIoCBean(CommandsValidator.class);
+        //CommandsResolver commandsResolver = new CommandsResolver(context.getBeans(Command.class));
 
         String errorMessage = commandsValidator.validate(args);
         if(errorMessage != null){
             showErrorMessage(errorMessage);
         }
-        commandsResolver.resolveCommands(args);
+        //commandsResolver.resolveCommands(args);
 
         /*
         * TODO

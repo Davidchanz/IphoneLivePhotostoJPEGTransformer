@@ -1,7 +1,9 @@
 package org.bubus.command;
 
 import org.bubus.Transformer;
+import org.bubus.context.annotation.Component;
 
+@Component
 public class LivePhotoTransformCommand implements Command{
 
     /*
