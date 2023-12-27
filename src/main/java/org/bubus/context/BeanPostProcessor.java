@@ -4,5 +4,5 @@ import org.bubus.context.annotation.Component;
 
 @Component
 public interface BeanPostProcessor {
-    Object construct(Class<?> clazz);
+    Object construct(Object bean, Class<?> clazz) throws Exception;
 }

@@ -22,30 +22,25 @@ public class AutowiredBeanPostProcessor implements BeanPostProcessor{
         this.context = context;
     }
     @Override
-    public Object construct(Class<?> clazz) {
-        try {
-            Object bean = clazz.getDeclaredConstructor().newInstance();
-            for (Field declaredField : clazz.getDeclaredFields()) {
-                for (Annotation declaredAnnotation : declaredField.getDeclaredAnnotations()) {
-                    if(declaredAnnotation.annotationType().equals(Autowired.class)){
-                        Class<?> fieldType = declaredField.getType();
-                        if(Arrays.stream(fieldType.getInterfaces()).toList().contains(Collection.class) ){
-                            ParameterizedType genericType = (ParameterizedType) declaredField.getGenericType();
-                            Type actualTypeArgument = genericType.getActualTypeArguments()[0];
-                            Set<?> beans = context.getBeans(Class.forName(actualTypeArgument.getTypeName()));
-                            declaredField.setAccessible(true);
-                            declaredField.set(bean, beans);
-                        }else {
-                            Object injectBean = context.getBean(fieldType);
-                            declaredField.setAccessible(true);
-                            declaredField.set(bean, injectBean);
-                        }
+    public Object construct(Object bean, Class<?> clazz) throws Exception{
+        for (Field declaredField : clazz.getDeclaredFields()) {
+            for (Annotation declaredAnnotation : declaredField.getDeclaredAnnotations()) {
+                if(declaredAnnotation.annotationType().equals(Autowired.class)){
+                    Class<?> fieldType = declaredField.getType();
+                    if(Arrays.stream(fieldType.getInterfaces()).toList().contains(Collection.class) ){
+                        ParameterizedType genericType = (ParameterizedType) declaredField.getGenericType();
+                        Type actualTypeArgument = genericType.getActualTypeArguments()[0];
+                        Set<?> beans = context.getBeans(Class.forName(actualTypeArgument.getTypeName()));
+                        declaredField.setAccessible(true);
+                        declaredField.set(bean, beans);
+                    }else {
+                        Object injectBean = context.getBean(fieldType);
+                        declaredField.setAccessible(true);
+                        declaredField.set(bean, injectBean);
                     }
                 }
             }
-            return bean;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
+        return bean;
     }
 }

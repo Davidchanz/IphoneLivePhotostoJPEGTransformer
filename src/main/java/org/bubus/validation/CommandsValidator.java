@@ -11,7 +11,7 @@ public class CommandsValidator {
     private Set<Validator> validators;
 
     /*
-    * Return null if all commands is valid otherwise return first not valid command
+    * TODO Return null if all commands is valid otherwise return first not valid command
     * */
     public String validate(String[] commands){
         for (String command : commands) {

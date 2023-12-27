@@ -1,12 +1,14 @@
 package org.bubus.context;
 
 import org.bubus.context.annotation.Component;
+import org.reflections.Reflections;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -14,58 +16,88 @@ public class Context {
     private final String rootPath;
     private Map<String, Class<?>> targetContainer = new HashMap<>();
     private Map<String, Object> IoC = new HashMap<>();
+    private Set<BeanPostProcessor> beanConstructors;
+    private boolean isContextStarted = false;
 
     private Context(Class<?> configClass){
         this.rootPath = configClass.getProtectionDomain().getCodeSource().getLocation().getPath().replaceAll("%20", " ");
         scan(configClass);
+        beanConstructors = getBeanConstructors();
+        filterBeanPostConstructors();
+        preConstructBeans();
         beansConstruct();
+        this.isContextStarted = true;
     }
 
     public Context(Class<?> configClass, String[] args){
         this(configClass);
     }
 
-    public <T> T getIoCBean(Class<T> clazz){
+    private void preConstructBeans() {
+        this.targetContainer.values().forEach(aClass -> {
+            try {
+                Object bean = aClass.getDeclaredConstructor().newInstance();
+                this.IoC.put(getBeanKey(aClass), bean);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public <T> T getBean(Class<T> clazz){
+        String key = getBeanKey(clazz);
+        Object bean = this.IoC.get(key);
+        return (T) bean;
+    }
+
+    private static <T> String getBeanKey(Class<?> clazz) {
         String simpleName = clazz.getSimpleName();
         String key = Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
-        return (T) this.IoC.get(key);
+        return key;
     }
 
     public <T> Set<T> getBeans(Class<T> clazz) {
+        String key = getBeanKey(clazz);
         Set<T> beans = new HashSet<>();
-        findInheritances(clazz).forEach(aClass -> {
-            try {
-                beans.add(aClass.getDeclaredConstructor().newInstance());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+        for (Object bean : this.IoC.values()) {
+            for (Class<?> anInterface : bean.getClass().getInterfaces()) {
+                Set<Class<?>> interfaces = new HashSet<>();
+                interfaces.addAll(Arrays.stream(bean.getClass().getInterfaces()).toList());
+                findSubInterfaces(interfaces, anInterface, clazz);
+                for (Class<?> aClass : interfaces) {
+                    if(aClass.equals(clazz)){
+                        beans.add((T) bean);
+                    }
+                }
             }
-        });
+        }
+        if(beans.isEmpty())
+            new RuntimeException("Bean with id [" + key + "] not exist!");
         return beans;
     }
 
-    public <T> T getBean(Class<T> clazz) {
-        Set<T> beans = new HashSet<>();
-        findInheritances(clazz).forEach(aClass -> {
-            try {
-                beans.add(aClass.getDeclaredConstructor().newInstance());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-        if(beans.size() > 1)
-            throw new RuntimeException("There are more than one Beans type of [" + clazz.getName() + "] {" + beans.toString() + "}");
-        return beans.iterator().next();
+    private void findSubInterfaces(Set<Class<?>> container, Class<?> anInterface, Class<?> targetInterface) {
+        Class<?>[] interfaces = anInterface.getInterfaces();
+        for (Class<?> aClass : interfaces) {
+            findSubInterfaces(container, aClass, targetInterface);
+            container.add(aClass);
+        }
     }
 
     private void beansConstruct() {
-        Set<BeanPostProcessor> beanConstructors = getBeanConstructors();
-        filterBeanPostConstructors();
-        this.targetContainer.forEach((s, aClass) -> {
+        this.IoC.keySet().forEach(this::constructBean);
+    }
+
+    private void constructBean(String key){
+        try{
+            Class<?> aClass = this.targetContainer.get(key);
+            Object bean = this.IoC.get(key);
             for (BeanPostProcessor beanPostProcessor : beanConstructors) {
-                Object bean = beanPostProcessor.construct(aClass);
-                this.IoC.put(s, bean);
+                bean = beanPostProcessor.construct(bean, aClass);
             }
-        });
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Set<BeanPostProcessor> getBeanConstructors() {
@@ -114,14 +146,13 @@ public class Context {
         for (String subPackage : allPackages) {
             Set<Class<?>> allClassesUsingClassLoader = findAllClassesUsingClassLoader(subPackage);
             for (Class<?> aClass : allClassesUsingClassLoader) {
-                String simpleName = aClass.getSimpleName();
-                String key = Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
+                String key = getBeanKey(aClass);
                 targetContainer.put(key, aClass);
             }
         }
     }
 
-    public Set<String> findAllSubPackages(String packageName) {
+    private Set<String> findAllSubPackages(String packageName) {
         InputStream stream = ClassLoader.getSystemClassLoader()
                 .getResourceAsStream(packageName.replaceAll("[.]", "/"));
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
@@ -143,7 +174,7 @@ public class Context {
         return packages;
     }
 
-    public Set<Class<?>> findAllClassesUsingClassLoader(String packageName) {
+    private Set<Class<?>> findAllClassesUsingClassLoader(String packageName) {
         InputStream stream = ClassLoader.getSystemClassLoader()
                 .getResourceAsStream(packageName.replaceAll("[.]", "/"));
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
@@ -154,7 +185,7 @@ public class Context {
                 .collect(Collectors.toSet());
     }
 
-    public Class<?> getClass(String className, String packageName) {
+    private Class<?> getClass(String className, String packageName) {
         try {
             Class<?> aClass = Class.forName(packageName + "."
                     + className.substring(0, className.lastIndexOf('.')));
@@ -184,5 +215,9 @@ public class Context {
             return declaredAnnotation;
         }
         return null;
+    }
+
+    boolean isContextStarted() {
+        return isContextStarted;
     }
 }
