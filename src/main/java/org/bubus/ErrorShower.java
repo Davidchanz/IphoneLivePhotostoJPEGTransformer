@@ -1,7 +1,7 @@
 package org.bubus;
 
 import org.apache.log4j.Logger;
-import org.bubus.context.annotation.Component;
+import org.bubus.spring.annotation.Component;
 
 @Component
 public class ErrorShower {

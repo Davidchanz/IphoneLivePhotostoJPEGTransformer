@@ -1,6 +1,6 @@
 package org.bubus.command;
 
-import org.bubus.context.annotation.Component;
+import org.bubus.spring.annotation.Component;
 
 @Component
 public class AdjustOriginalCreatedDateCommand implements Command{

@@ -1,10 +1,8 @@
 package org.bubus.command;
 
-import org.bubus.context.annotation.Component;
+import org.bubus.spring.annotation.Component;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Iterator;
 
 @Component
 public class PathCommand implements Command{

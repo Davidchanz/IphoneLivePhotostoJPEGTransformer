@@ -1,5 +1,6 @@
 package org.bubus.command;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,7 +20,7 @@ public interface Command {
     default boolean isSupport(String arg){
         return arg.equals(getCommandName());
     }
-    default CommandDefinitionMap getOptionsCommands(Set<Command> commands){
+    default CommandDefinitionMap getOptionsCommands(Collection<Command> commands){
         CommandDefinitionMap optionsCommands = new CommandDefinitionMap();
         for (Class<? extends Command> optionsCommand : this.getOptionsCommandsClasses()) {
             for (Command command : commands) {

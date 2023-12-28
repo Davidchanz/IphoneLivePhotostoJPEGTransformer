@@ -1,4 +1,4 @@
-package org.bubus.context.annotation;
+package org.bubus.spring.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;

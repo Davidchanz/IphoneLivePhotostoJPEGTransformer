@@ -1,9 +1,8 @@
 package org.bubus;
 
-import org.apache.log4j.Logger;
 import org.bubus.command.CommandsResolver;
-import org.bubus.context.annotation.Autowired;
-import org.bubus.context.annotation.Component;
+import org.bubus.spring.annotation.Autowired;
+import org.bubus.spring.annotation.Component;
 import org.bubus.validation.CommandsValidator;
 
 @Component

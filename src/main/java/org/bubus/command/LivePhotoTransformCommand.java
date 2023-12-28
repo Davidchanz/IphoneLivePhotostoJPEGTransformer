@@ -1,9 +1,10 @@
 package org.bubus.command;
 
 import org.bubus.Transformer;
-import org.bubus.context.annotation.Autowired;
-import org.bubus.context.annotation.Component;
+import org.bubus.spring.annotation.Autowired;
+import org.bubus.spring.annotation.Component;
 
+import java.util.List;
 import java.util.Set;
 
 @Component
@@ -22,7 +23,7 @@ public class LivePhotoTransformCommand implements Command{
     */
 
     @Autowired
-    private Set<Command> commands;
+    private List<Command> commands;
 
     @Override
     public boolean run(String[] args, String arg) {
