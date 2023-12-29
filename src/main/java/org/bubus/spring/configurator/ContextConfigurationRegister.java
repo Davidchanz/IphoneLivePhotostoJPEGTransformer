@@ -88,20 +88,12 @@ public class ContextConfigurationRegister {
     private void filterBeanDefinitionsContainer(Class<?> clazz){
         Set<String> keys = new HashSet<>();
         keys.add(this.internalContext.getBeanDefinitionsContainer().getBeanKey(clazz));
-        this.internalContext.getBeanDefinitionsContainer().forEach((s, aClass) -> {
-            for (Class<?> anInterface : aClass.getClazz().getInterfaces()) {
-                if (anInterface.equals(clazz)) {
-                    keys.add(s);
-                    break;
-                }
-            }
-        });
         for (String key : keys) {
             this.internalContext.getBeanDefinitionsContainer().remove(key);
         }
     }
 
-    public<T extends ConfiguratorFactory> T getConfigurator(Class<T> configuratorFactoryClass) {
+    public<T extends ConfiguratorFactory> T getConfiguratorFactory(Class<T> configuratorFactoryClass) {
         Set<ConfiguratorFactory> configurators = getConfigurators(ConfiguratorFactory.class);
         for (ConfiguratorFactory configurator : configurators) {
             if(configurator.getClass().equals(configuratorFactoryClass)){

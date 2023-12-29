@@ -13,7 +13,8 @@ public interface InternalContext extends Context {
     IoCContainer<Bean> getBeansContainer();
     Set<ConfiguratorFactory> getConfiguratorFactories();
     ContextConfigurationRegister getContextListenerRegister();
-    void addBean(Bean bean);
+    void putBean(Bean bean);
+    void putBeanDefinition(BeanDefinition beanDefinition);
     void startContext();
     void refreshContext();
     void stopContext();

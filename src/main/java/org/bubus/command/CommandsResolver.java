@@ -10,7 +10,7 @@ import java.util.Set;
 public class CommandsResolver {
     @Autowired
     private Set<Command> commands;
-    public void resolveCommands(String[] args){//TODO    -lpt -p /home/dir
+    public void resolveCommands(String[] args){//TODO    -lpt -p /first/dir -acd -p /second/dir
         for(int i = 0; i < args.length; i++) {
             if (args[i].startsWith("-")) {//Command //TODO resolve by validators
                 args[i] = args[i].substring(1);

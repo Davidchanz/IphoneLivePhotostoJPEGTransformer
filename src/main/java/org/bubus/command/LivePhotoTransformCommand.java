@@ -43,11 +43,6 @@ public class LivePhotoTransformCommand implements Command{
     }
 
     @Override
-    public Object getCommandResult() {
-        return null;
-    }
-
-    @Override
     public String getCommandName() {
         return "lpt";
     }

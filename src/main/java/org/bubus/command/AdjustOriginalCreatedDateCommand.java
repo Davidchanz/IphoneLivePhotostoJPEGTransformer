@@ -2,6 +2,8 @@ package org.bubus.command;
 
 import org.bubus.spring.annotation.Component;
 
+import java.util.Set;
+
 @Component
 public class AdjustOriginalCreatedDateCommand implements Command{
 
@@ -13,5 +15,10 @@ public class AdjustOriginalCreatedDateCommand implements Command{
     @Override
     public String getCommandName() {
         return "acd";
+    }
+
+    @Override
+    public Set<Class<? extends Command>> getOptionsCommandsClasses() {
+        return Set.of(PathCommand.class);
     }
 }

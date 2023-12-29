@@ -16,8 +16,14 @@ public class BeanPostProcessorContextListener implements ContextListener<Context
 
     @Override
     public void listen() {
-        BeanPostProcessorFactory beanPostProcessorFactory = this.internalContext.getContextListenerRegister().getConfigurator(BeanPostProcessorFactory.class);
-        Set<BeanPostProcessor> beanPostProcessors = this.internalContext.getContextListenerRegister().getConfigurators(BeanPostProcessor.class);
+        BeanPostProcessorFactory beanPostProcessorFactory =
+                this.internalContext.getContextListenerRegister()
+                        .getConfiguratorFactory(BeanPostProcessorFactory.class);
+
+        Set<BeanPostProcessor> beanPostProcessors =
+                this.internalContext.getContextListenerRegister()
+                        .getConfigurators(BeanPostProcessor.class);
+
         beanPostProcessorFactory.process(beanPostProcessors);
     }
 }

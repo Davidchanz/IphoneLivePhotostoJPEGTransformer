@@ -1,9 +1,21 @@
 package org.bubus.spring.bean;
 
-public class BeanDefinition implements IoCContainerItem{
+import java.util.Comparator;
+
+public class BeanDefinition implements IoCContainerItem {
     private Class<?> clazz;
     private String scope;
     private String id;
+
+    private int order = Integer.MAX_VALUE;
+
+    public int getOrder() {
+        return order;
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
+    }
 
     public String getId() {
         return id;
@@ -16,6 +28,11 @@ public class BeanDefinition implements IoCContainerItem{
     @Override
     public Class<?> getClazz() {
         return clazz;
+    }
+
+    @Override
+    public Object getObject() {
+        return getClazz();
     }
 
     public void setClazz(Class<?> clazz) {

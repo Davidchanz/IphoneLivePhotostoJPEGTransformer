@@ -8,6 +8,7 @@ import org.bubus.spring.configurator.ContextConfigurationRegister;
 import org.bubus.spring.context.state.ContextRefreshed;
 import org.bubus.spring.context.state.ContextStarted;
 import org.bubus.spring.context.state.ContextStopped;
+import org.bubus.spring.exception.BeanNotFoundException;
 import org.bubus.spring.listener.ContextListener;
 import org.bubus.spring.listener.ContextListenerStarter;
 
@@ -28,32 +29,37 @@ public class ApplicationInternalContext implements InternalContext {
     @Override
     public <T> T getBean(Class<T> clazz){
         Bean bean = this.beanIoCContainer.get(clazz);
-        return (T) bean.getObject();
+        if(bean == null){
+            Collection<T> beansByInterface = this.beanIoCContainer.getBeansByInterface(clazz);
+            if(beansByInterface.isEmpty())
+                throw new BeanNotFoundException("No Bean [" + clazz + "]", clazz);
+            if(beansByInterface.size() > 1)
+                throw new RuntimeException("There are several Beans [" + clazz + "], founded Beans{" + beansByInterface + "}");
+            return beansByInterface.iterator().next();
+        }else
+            return (T) bean.getObject();
     }
 
     @Override
     public <T> Collection<T> getBeans(Class<T> clazz) {
         Collection<T> beans = new HashSet<>();
-        for (Bean bean : this.beanIoCContainer.values()) {
-            for (Class<?> anInterface : bean.getClazz().getInterfaces()) {
-                Set<Class<?>> interfaces = new HashSet<>();
-                interfaces.addAll(Arrays.stream(bean.getClazz().getInterfaces()).toList());
-                findSubInterfaces(interfaces, anInterface, clazz);
-                for (Class<?> aClass : interfaces) {
-                    if(aClass.equals(clazz)){
-                        beans.add((T) bean.getObject());
-                    }
-                }
-            }
+        Collection<T> beansByInterface = this.beanDefinitionsContainer.getBeansByInterface(clazz);
+        if(beansByInterface.isEmpty())
+            throw new BeanNotFoundException("Bean with id [" + this.beanIoCContainer.getBeanKey(clazz) + "] not exist!", clazz);
+        for (T t : beansByInterface) {
+            beans.add(getBean((Class<T>) t));
         }
-        if(beans.isEmpty())
-            new RuntimeException("Bean with id [" + this.beanIoCContainer.getBeanKey(clazz) + "] not exist!");
         return beans;
     }
 
     @Override
-    public void addBean(Bean bean){
+    public void putBean(Bean bean){
         this.beanIoCContainer.put(bean);
+    }
+
+    @Override
+    public void putBeanDefinition(BeanDefinition beanDefinition) {
+        this.beanDefinitionsContainer.put(beanDefinition);
     }
 
     @Override
@@ -80,6 +86,7 @@ public class ApplicationInternalContext implements InternalContext {
     public void startContext() {
         this.contextListenerRegister = new ContextConfigurationRegister(this);
         this.contextListenerRegister.registerContextConfigurators();
+
         this.configuratorFactories = this.contextListenerRegister.getConfigurators(ConfiguratorFactory.class);
 
         Set<ContextListener> contextListeners = this.contextListenerRegister.getConfigurators(ContextListener.class);
@@ -96,14 +103,6 @@ public class ApplicationInternalContext implements InternalContext {
     @Override
     public void stopContext() {
         this.contextListenerStarter.listen(ContextStopped.class);
-    }
-
-    private void findSubInterfaces(Set<Class<?>> container, Class<?> anInterface, Class<?> targetInterface) {
-        Class<?>[] interfaces = anInterface.getInterfaces();
-        for (Class<?> aClass : interfaces) {
-            findSubInterfaces(container, aClass, targetInterface);
-            container.add(aClass);
-        }
     }
 
     @Override
