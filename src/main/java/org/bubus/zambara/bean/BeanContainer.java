@@ -11,10 +11,6 @@ public class BeanContainer extends HashMap<String, Bean> {
         return super.get(getBeanKey(clazz));
     }
 
-    public Set<Class<?>> getBeanDefinitionClasses(){
-        return super.values().stream().map(Bean::getClazz).collect(Collectors.toSet());
-    }
-
     public Bean put(Bean bean) {
         return super.put(getBeanKey(bean.getClazz()), bean);
     }
@@ -24,8 +20,8 @@ public class BeanContainer extends HashMap<String, Bean> {
         return Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
     }
 
-    public Collection<Bean> getBeansByInterface(Class<?> targetInterfaces) {
-        Collection<Bean> beans = new HashSet<>();
+    public Collection<Class<?>> getBeansByInterface(Class<?> targetInterfaces) {
+        Collection<Class<?>> beanClasses = new HashSet<>();
         for (Bean item : this.values()) {
             for (Class<?> anInterface : item.getClazz().getInterfaces()) {
                 Set<Class<?>> interfaces =
@@ -33,12 +29,12 @@ public class BeanContainer extends HashMap<String, Bean> {
                 findSubInterfaces(interfaces, anInterface);
                 for (Class<?> anInterfaces : interfaces) {
                     if(anInterfaces.equals(targetInterfaces)){
-                        beans.add(item);
+                        beanClasses.add(anInterfaces);
                     }
                 }
             }
         }
-        return beans;
+        return beanClasses;
     }
 
     public void findSubInterfaces(Set<Class<?>> container, Class<?> anInterface) {

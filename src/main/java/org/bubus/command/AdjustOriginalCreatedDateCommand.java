@@ -1,5 +1,6 @@
 package org.bubus.command;
 
+import org.bubus.zambara.annotation.Autowired;
 import org.bubus.zambara.annotation.Component;
 
 import java.util.Set;
@@ -7,6 +8,8 @@ import java.util.Set;
 @Component
 public class AdjustOriginalCreatedDateCommand implements Command{
 
+    @Autowired
+    private PathCommand pathCommand;
     @Override
     public boolean run(String[] args, String arg) {
         return false;

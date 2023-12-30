@@ -1,10 +1,12 @@
 package org.bubus.command;
 
 import org.bubus.zambara.annotation.Component;
+import org.bubus.zambara.annotation.Scope;
 
 import java.io.File;
 
 @Component
+@Scope("prototype")
 public class PathCommand implements Command{
     private String path;
     @Override

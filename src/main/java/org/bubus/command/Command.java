@@ -20,7 +20,7 @@ public interface Command {
     default boolean isSupport(String arg){
         return arg.equals(getCommandName());
     }
-    default CommandDefinitionMap getOptionsCommands(Collection<Command> commands){
+    default CommandDefinitionMap getOptionsCommands(Command... commands){
         CommandDefinitionMap optionsCommands = new CommandDefinitionMap();
         for (Class<? extends Command> optionsCommand : this.getOptionsCommandsClasses()) {
             for (Command command : commands) {

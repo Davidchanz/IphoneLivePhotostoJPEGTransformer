@@ -4,6 +4,8 @@ import org.bubus.zambara.bean.Bean;
 import org.bubus.zambara.bean.BeanContainer;
 import org.bubus.zambara.bean.BeanDefinition;
 import org.bubus.zambara.bean.BeanDefinitionContainer;
+import org.bubus.zambara.bean.scope.Scope;
+import org.bubus.zambara.configurator.factory.ScopeFactory;
 import org.bubus.zambara.bpp.BeanPostProcessor;
 import org.bubus.zambara.configurator.factory.BeanPostProcessorFactory;
 import org.bubus.zambara.configurator.ContextConfigurationRegister;
@@ -22,6 +24,7 @@ public class ApplicationInternalContext implements InternalContext {
     private ContextConfigurationRegister contextConfigurationRegister;
     private ContextListenerFactory contextListenerFactory;
     private BeanPostProcessorFactory beanPostProcessorFactory;
+    private ScopeFactory scopeFactory;
 
     public ApplicationInternalContext(BeanDefinitionContainer beanDefinitionsContainer){
         this.beanDefinitionsContainer = beanDefinitionsContainer;
@@ -31,14 +34,20 @@ public class ApplicationInternalContext implements InternalContext {
 
     @Override
     public <T> T getBean(Class<T> clazz){
-        Bean bean = this.beanContainer.get(clazz);
+        BeanDefinition beanDefinition = this.beanDefinitionsContainer.get(clazz);
+        if(beanDefinition == null)
+            throw new BeanNotFoundException("No Bean [" + clazz + "]", clazz);
+
+        Bean bean = this.scopeFactory.getBean(beanDefinition);
+        //Bean bean = this.beanContainer.get(clazz);
+
         if(bean == null){
-            Collection<Bean> beansByInterface = this.beanContainer.getBeansByInterface(clazz);
+            Collection<Class<?>> beansByInterface = this.beanContainer.getBeansByInterface(clazz);
             if(beansByInterface.isEmpty())
                 throw new BeanNotFoundException("No Bean [" + clazz + "]", clazz);
             if(beansByInterface.size() > 1)
                 throw new RuntimeException("There are several Beans [" + clazz + "], founded Beans{" + beansByInterface + "}");
-            return (T) beansByInterface.iterator().next().getObject();
+            return (T) getBean(beansByInterface.iterator().next());
         }else
             return (T) bean.getObject();
     }
@@ -85,6 +94,14 @@ public class ApplicationInternalContext implements InternalContext {
     public void startContext() {
         this.contextConfigurationRegister = new ContextConfigurationRegister(this);
         this.contextConfigurationRegister.registerContextConfigurators();
+
+        //TODO make all of this internal
+
+        //Scope
+        this.scopeFactory = new ScopeFactory(this);
+        Set<Class<Scope>> scopes = contextConfigurationRegister
+                .getConfigurators(Scope.class);
+        this.scopeFactory.initialize(scopes);
 
         //BeanPostProcessors
         this.beanPostProcessorFactory = new BeanPostProcessorFactory(this);
