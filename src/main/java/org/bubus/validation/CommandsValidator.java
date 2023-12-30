@@ -1,7 +1,7 @@
 package org.bubus.validation;
 
-import org.bubus.spring.annotation.Autowired;
-import org.bubus.spring.annotation.Component;
+import org.bubus.zambara.annotation.Autowired;
+import org.bubus.zambara.annotation.Component;
 
 import java.util.Set;
 

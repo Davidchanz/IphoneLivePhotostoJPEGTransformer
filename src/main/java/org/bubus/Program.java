@@ -1,8 +1,8 @@
 package org.bubus;
 
 import org.bubus.command.CommandsResolver;
-import org.bubus.spring.annotation.Autowired;
-import org.bubus.spring.annotation.Component;
+import org.bubus.zambara.annotation.Autowired;
+import org.bubus.zambara.annotation.Component;
 import org.bubus.validation.CommandsValidator;
 
 @Component

@@ -1,6 +1,6 @@
 package org.bubus.validation.prefix;
 
-import org.bubus.spring.annotation.Component;
+import org.bubus.zambara.annotation.Component;
 
 @Component
 public class PrefixMinusCommandValidator implements PrefixValidator {

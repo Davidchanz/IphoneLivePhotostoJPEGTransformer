@@ -1,6 +1,6 @@
 package org.bubus.command;
 
-import org.bubus.spring.annotation.Component;
+import org.bubus.zambara.annotation.Component;
 
 import java.util.Set;
 

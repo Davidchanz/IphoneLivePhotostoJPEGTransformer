@@ -1,8 +1,8 @@
 package org.bubus.command;
 
 import org.bubus.Transformer;
-import org.bubus.spring.annotation.Autowired;
-import org.bubus.spring.annotation.Component;
+import org.bubus.zambara.annotation.Autowired;
+import org.bubus.zambara.annotation.Component;
 
 import java.util.List;
 import java.util.Set;
@@ -23,11 +23,11 @@ public class LivePhotoTransformCommand implements Command{
     */
 
     @Autowired
-    private List<Command> commands;
+    private PathCommand command;
 
     @Override
     public boolean run(String[] args, String arg) {
-        CommandDefinitionMap optionsCommands = getOptionsCommands(commands);
+        CommandDefinitionMap optionsCommands = getOptionsCommands(command);
         PathCommand pathCommand = optionsCommands.get(PathCommand.class);
         Transformer transformer = new Transformer();
         if (pathCommand.accept(args))

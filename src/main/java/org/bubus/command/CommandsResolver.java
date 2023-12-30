@@ -1,7 +1,7 @@
 package org.bubus.command;
 
-import org.bubus.spring.annotation.Autowired;
-import org.bubus.spring.annotation.Component;
+import org.bubus.zambara.annotation.Autowired;
+import org.bubus.zambara.annotation.Component;
 
 import java.util.Arrays;
 import java.util.Set;
@@ -29,7 +29,7 @@ public class CommandsResolver {
 
     private void initializeCommandArguments(Command command, int currentCommandIndex, String[] args) {
         if(args[currentCommandIndex].startsWith("-")){
-            for (Command optionCommand : command.getOptionsCommands(commands).values()) {
+            for (Command optionCommand : command.getOptionsCommands(commands.toArray(new Command[0])).values()) {
                 if(args[currentCommandIndex].substring(1).equals(optionCommand.getCommandName())){
                     optionCommand.setCommandsArguments(Arrays.copyOfRange(args, currentCommandIndex+1, args.length));
                 }

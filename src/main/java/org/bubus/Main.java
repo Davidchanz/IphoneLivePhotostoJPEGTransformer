@@ -1,7 +1,7 @@
 package org.bubus;
 
-import org.bubus.spring.context.Context;
-import org.bubus.spring.reader.ClassPathBeanDefinitionReader;
+import org.bubus.zambara.context.Context;
+import org.bubus.zambara.reader.ClassPathBeanDefinitionReader;
 
 public class Main {
 
