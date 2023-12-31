@@ -14,12 +14,12 @@ public class Program {
     @Autowired
     private ErrorShower errorShower;
     public void process(String[] args){
-        /*String validateMessage = commandsValidator.validate(args);
+        String validateMessage = commandsValidator.validate(args);
         if(validateMessage != null){
             errorShower.showErrorMessage(validateMessage);
             System.exit(1);
         }else {
-        }*/
+        }
         commandsResolver.resolveCommands(args);
         /*
          * TODO

@@ -7,7 +7,14 @@ public class PrefixMinusCommandValidator implements PrefixValidator {
     private final String COMMAND_PREFIX_MINUS = "-";
     @Override
     public boolean validate(String command) {
-        return command.startsWith(COMMAND_PREFIX_MINUS);
+        boolean isValid = command.startsWith(COMMAND_PREFIX_MINUS);
+
+        return isValid;
+    }
+
+    @Override
+    public String process(String command) {
+        return command.substring(1);
     }
 
     @Override

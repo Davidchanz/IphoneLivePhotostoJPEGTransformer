@@ -4,20 +4,29 @@ import com.drew.imaging.ImageProcessingException;
 import com.drew.imaging.quicktime.QuickTimeMetadataReader;
 import com.drew.metadata.Directory;
 import com.drew.metadata.Metadata;
+import com.drew.metadata.file.FileSystemDirectory;
 import com.drew.metadata.mov.metadata.QuickTimeMetadataDirectory;
 import me.tongfei.progressbar.ProgressBar;
 import org.apache.commons.imaging.ImagingException;
 import org.apache.log4j.Logger;
+import org.bubus.zambara.annotation.Autowired;
+import org.bubus.zambara.annotation.Component;
+import org.bubus.zambara.annotation.Scope;
 
 import java.io.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 
+@Component
+@Scope("prototype")
 public class Transformer {
     static final Logger logger = Logger.getLogger(Transformer.class);
+    @Autowired
+    private WriteExifMetadata writeExifMetadata;
     private final int frameCount = 1;
-    private final String COMMAND_TRANSFORM = "ffmpeg -ss 00:00:01 -i %s -frames:v " + frameCount + " %s(%%d).jpeg";
+    private final String COMMAND_LIVE_PHOTO_TRANSFORM = "ffmpeg -ss 00:00:01 -i %s -frames:v " + frameCount + " %s(%%d).jpeg";
     private final String COMMAND_GET_DURATION = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s";
     private final float MAX_DURATION = 3.0f;
     private ProgressBar pbTransform;
@@ -25,38 +34,54 @@ public class Transformer {
     private int fileCount = 0;
     private int allFileCount = 0;
     private List<File> files = new ArrayList<>();
-    public static List<String> errorList = Collections.synchronizedList(new ArrayList<String>());
+    public static List<String> errorList = Collections.synchronizedList(new ArrayList<>());
 
-    public void transform(String rootPath) {
+    public void livePhotoTransform(String rootPath) {
+        initialize(rootPath, this::isLivePhoto, "LivePhoto");
+
+        TimeRec duration = executeTransformation(this::livePhotoTransform);
+
+        showErrorIfExists();
+
+        showExecutionTime(duration.endTime(), duration.startTime());
+    }
+
+    private TimeRec executeTransformation(Action transformation) {
+        System.out.println("Start Transforming");
+        logger.debug("Start Transforming");
+
+        long startTime = System.currentTimeMillis();
+
+        pbTransform = new ProgressBar("Transform", fileCount);
+        pbTransform.start();
+        transformation.execute();
+        pbTransform.stop();
+
+        long endTime = System.currentTimeMillis();
+        TimeRec duration = new TimeRec(startTime, endTime);
+        return duration;
+    }
+
+    private record TimeRec(long startTime, long endTime) {
+    }
+
+    private void initialize(String rootPath, BiFunction<File, File, Boolean> isTargetFile, String targetFileName) {
         File root = new File(rootPath);
         setAllFileCount(root);
         logger.debug("Start Initializing");
         pbInitialization = new ProgressBar("Initializing", allFileCount);
         pbInitialization.start();
-        initilizeTrasformer(root);
+        initializeTargetFiles(root, isTargetFile);
         pbInitialization.stop();
+
         System.out.println("Files found " + allFileCount);
         logger.debug("Files Found " + allFileCount);
-        System.out.println("MOV Files found " + fileCount);
-        logger.debug("MOV Files found " + fileCount);
+        System.out.println(targetFileName + " Files found " + fileCount);
+        logger.debug(targetFileName + " Files found " + fileCount);
         logger.debug("Done Initializing");
+    }
 
-        System.out.println("Start Transforming");
-        logger.debug("Start Transforming");
-        long startTime = System.currentTimeMillis();
-
-        pbTransform = new ProgressBar("Transform", fileCount);
-        pbTransform.start();
-        transform();
-        pbTransform.stop();
-        long endTime = System.currentTimeMillis();
-
-        if(!errorList.isEmpty()) {
-            System.err.println("An NonFatal Errors occurred during execution!");
-            errorList.forEach(System.out::println);
-            System.out.println("See Log for more details");
-        }
-
+    private static void showExecutionTime(long endTime, long startTime) {
         Duration duration = Duration.ofMillis(endTime - startTime);
         long seconds = duration.getSeconds();
         long HH = seconds / 3600;
@@ -67,6 +92,26 @@ public class Transformer {
         logger.debug("Transform Time: " + timeInHHMMSS);
         logger.debug("Done Transforming");
         System.out.println("Done Transforming");
+    }
+
+    private static void showErrorIfExists() {
+        if(!errorList.isEmpty()) {
+            System.err.println("An NonFatal Errors occurred during execution!");
+            errorList.forEach(System.out::println);
+            System.out.println("See Log for more details");
+        }
+    }
+
+    public void adjustOriginalCreatedTime(String rootPath) {
+        //TODO Get from all Files in dir FileLastModifiedDate and set it in OriginalCreatedDate
+
+        initialize(rootPath, (file, file2) -> true, "File");
+
+        TimeRec duration = executeTransformation(this::adjustOriginalCreatedTime);
+
+        showErrorIfExists();
+
+        showExecutionTime(duration.endTime(), duration.startTime());
     }
 
     public void setAllFileCount(File dir){
@@ -84,37 +129,71 @@ public class Transformer {
         });
     }
 
-    public void initilizeTrasformer(File dir){
+    public void initializeTargetFiles(File dir, BiFunction<File, File, Boolean> isTargetFile){
         Arrays.stream(dir.listFiles()).parallel().forEach(file -> {
-            try {
-                if (file.isDirectory())
-                    initilizeTrasformer(file);
-                else if (file.getName().endsWith(".MOV"))
-                    if (getDuration(file, dir) <= MAX_DURATION) {
-                        fileCount++;
-                        files.add(file);
-                    }
-            }catch (Exception e){
-                System.err.println("Fatal Error! For more info see logs");
-                logger.error("Error while scanning DIRECTORY " + dir);
-                pbInitialization.stop();
-                System.exit(1);
+            if (file.isDirectory())
+                initializeTargetFiles(file, isTargetFile);
+            else if(isTargetFile.apply(dir, file)){
+                fileCount++;
+                files.add(file);
             }
             pbInitialization.step();
         });
     }
 
-    private void transform(){
+    private boolean isLivePhoto(File dir, File file) {
+        try {
+            if (file.getName().endsWith(".MOV"))
+                if (runGetDurationCommand(file, dir) <= MAX_DURATION) {
+                    return true;
+                }
+        }catch (Exception e){
+            System.err.println("Fatal Error! For more info see logs");
+            logger.error("Error while scanning DIRECTORY " + dir);
+            pbInitialization.stop();
+            System.exit(1);
+        }
+        return false;
+    }
+
+    private void adjustOriginalCreatedTime(){
         files.stream().parallel().forEach(file -> {
             try {
                 File dir = file.getParentFile();
                 Metadata metaData = getMetaData(file);
 
-                List<File> files = runCommand(file, dir);
+                AtomicBoolean fl = new AtomicBoolean(true);
+                try {
+                    if(!setOriginalDateMetaData(file, metaData))
+                        fl.set(false);
+                }catch (Exception ex){
+                    String errorMessage = "Error while set MetaData FROM file" + file.getName() + " DIRECTORIES" + dir.getName();
+                    errorList.add(errorMessage);
+                    logger.error(errorMessage);
+                }
+                file.delete();
+
+                pbTransform.step();
+            }catch (Exception ex){
+                System.err.println("Fatal Error! For more info see logs");
+                logger.error("Error while Transform FORM file " + file.getName() + " DIRECTORIES " + file.getParentFile().getName());
+                pbTransform.stop();
+                System.exit(1);
+            }
+        });
+    }
+
+    private void livePhotoTransform(){
+        files.stream().parallel().forEach(file -> {
+            try {
+                File dir = file.getParentFile();
+                Metadata metaData = getMetaData(file);
+
+                List<File> files = runLivePhotoTransformCommand(file, dir);
                 AtomicBoolean fl = new AtomicBoolean(true);
                 files.stream().parallel().forEach(createdFile -> {
                     try {
-                        if(!setMetaData(createdFile, metaData))
+                        if(!setLivePhotoMetaData(createdFile, metaData))
                             fl.set(false);
                     }catch (Exception ex){
                         String errorMessage = "Error while set MetaData FROM file" + file.getName() + " DIRECTORIES" + dir.getName();
@@ -135,9 +214,10 @@ public class Transformer {
             }
         });
     }
-    private List<File> runCommand(File file, File directory) throws IOException, InterruptedException {
+
+    private List<File> runLivePhotoTransformCommand(File file, File directory) throws IOException, InterruptedException {
         String fileName = file.getName();
-        ProcessBuilder pb = new ProcessBuilder(String.format(COMMAND_TRANSFORM, fileName, fileName.split("\\.")[0]).split(" "));
+        ProcessBuilder pb = new ProcessBuilder(String.format(COMMAND_LIVE_PHOTO_TRANSFORM, fileName, fileName.split("\\.")[0]).split(" "));
         pb.directory(directory);
         final Process process = pb.start();
         process.waitFor();
@@ -151,7 +231,7 @@ public class Transformer {
         return transformedFiles;
     }
 
-    private float getDuration(File file, File directory) throws IOException, InterruptedException {
+    private float runGetDurationCommand(File file, File directory) throws IOException, InterruptedException {
         String fileName = file.getName();
         ProcessBuilder pb = new ProcessBuilder(String.format(COMMAND_GET_DURATION, fileName).split(" "));
         pb.directory(directory);
@@ -170,16 +250,28 @@ public class Transformer {
         return metadata;
     }
 
-    private boolean setMetaData(File file, Metadata metaData) throws IOException, ImagingException {
+    private boolean setLivePhotoMetaData(File file, Metadata metaData) throws IOException, ImagingException {
         String location = null;
-        String dataTime = null;
+        Date dataTime = null;
         for (Directory directory : metaData.getDirectoriesOfType(QuickTimeMetadataDirectory.class)) {
             location = directory.getDescription(1293);//Location
-            dataTime = directory.getDescription(1286);//DataTime
+            dataTime = directory.getDate(1286);//DataTime
         }
         if(dataTime == null)
             return false;
         else
-            return new WriteExifMetadata().changeExifMetadata(file, new File(file.getParent() + File.separator + "tr:" + file.getName()), location, dataTime);
+            return this.writeExifMetadata.changeLivePhotoMetadata(file, new File(file.getParent() + File.separator + "tr:" + file.getName()), location, dataTime);
     }
+
+    private boolean setOriginalDateMetaData(File file, Metadata metaData) throws IOException, ImagingException {
+        Date dataTime = null;
+        for (Directory directory : metaData.getDirectoriesOfType(FileSystemDirectory.class)) {
+            dataTime = directory.getDate(3);//DataTime
+        }
+        if(dataTime == null)
+            return false;
+        else
+            return this.writeExifMetadata.changeOriginalDateMetadata(file, new File(file.getParent() + File.separator + "tr:" + file.getName()), dataTime);
+    }
+
 }

@@ -27,18 +27,30 @@ public class BeanDefinitionContainer extends HashMap<String, BeanDefinition> {
     public Collection<BeanDefinition> getBeanDefinitionsByInterface(Class<?> targetInterfaces) {
         Collection<BeanDefinition> beans = new HashSet<>();
         for (BeanDefinition item : this.values()) {
-            for (Class<?> anInterface : item.getClazz().getInterfaces()) {
-                Set<Class<?>> interfaces =
-                        new HashSet<>(Arrays.stream(item.getClazz().getInterfaces()).toList());
-                findSubInterfaces(interfaces, anInterface);
-                for (Class<?> anInterfaces : interfaces) {
-                    if(anInterfaces.equals(targetInterfaces)){
-                        beans.add(item);
+            Set<Class<?>> superClasses = new HashSet<>(Collections.singleton(item.getClazz()));
+            findAllSuperClass(superClasses, item.getClazz());
+            for (Class<?> superClass : superClasses) {
+                for (Class<?> anInterface : superClass.getInterfaces()) {
+                    Set<Class<?>> interfaces =
+                            new HashSet<>(Arrays.stream(superClass.getInterfaces()).toList());
+                    findSubInterfaces(interfaces, anInterface);
+                    for (Class<?> anInterfaces : interfaces) {
+                        if(anInterfaces.equals(targetInterfaces)){
+                            beans.add(item);
+                        }
                     }
                 }
             }
         }
         return beans;
+    }
+
+    private void findAllSuperClass(Set<Class<?>> container, Class<?> clazz) {
+        Class<?> superClass = clazz.getSuperclass();
+        if(superClass != null) {
+            findAllSuperClass(container, superClass);
+            container.add(superClass);
+        }
     }
 
     public void findSubInterfaces(Set<Class<?>> container, Class<?> anInterface) {

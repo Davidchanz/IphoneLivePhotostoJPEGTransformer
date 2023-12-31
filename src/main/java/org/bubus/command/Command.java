@@ -1,10 +1,7 @@
 package org.bubus.command;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Arrays;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public interface Command {
     default boolean accept(String[] args){
@@ -20,34 +17,29 @@ public interface Command {
     default boolean isSupport(String arg){
         return arg.equals(getCommandName());
     }
-    default CommandDefinitionMap getOptionsCommands(Command... commands){
-        CommandDefinitionMap optionsCommands = new CommandDefinitionMap();
-        for (Class<? extends Command> optionsCommand : this.getOptionsCommandsClasses()) {
-            for (Command command : commands) {
-                if(command.getClass().equals(optionsCommand)){
-                    optionsCommands.put(optionsCommand, getCommand(command, optionsCommand));
-                }
-            }
-        }
-        return optionsCommands;
-    }
-    default Set<Class<? extends Command>> getOptionsCommandsClasses(){
-        return new HashSet<>();
-    }
-    default <T> T getCommand(Command command, Class<T> commandClass){
-        return (T) command;
-    }
     default <R> R getCommandResult(){
         return null;
     }
-
-    class CommandDefinitionMap extends HashMap<Class<? extends Command>, Command>{
-        public <T extends Command> T get(Class<T> key) {
-            return (T) super.get(key);
+    default void initializeOptionalCommands(String... args){
+        Set<Command> optionalCommands = getOptionalCommands();
+        if(!optionalCommands.isEmpty()) {
+            for (Command optionalCommand : optionalCommands) {
+                for (int i = 0; i < args.length; i++) {
+                    if (optionalCommand.isSupport(args[i])) {
+                        optionalCommand.initializeOptionalCommands(Arrays.copyOfRange(args, i + 1, args.length));
+                        break;
+                    }
+                }
+            }
+        }else {
+            setCommandArgument(args);
         }
     }
 
-    default void setCommandsArguments(String... args){
+    default void setCommandArgument(String... args){};
 
-    }
+    default Set<Command> getOptionalCommands(){return Set.of();};
+    boolean isRunnable();
+    void setOrder(int order);
+    int getOrder();
 }
