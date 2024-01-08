@@ -105,7 +105,7 @@ public class Transformer {
     public void adjustOriginalCreatedTime(String rootPath) {
         //TODO Get from all Files in dir FileLastModifiedDate and set it in OriginalCreatedDate
 
-        initialize(rootPath, (file, file2) -> true, "File");
+        initialize(rootPath, this::isJPGImage, "Images");
 
         TimeRec duration = executeTransformation(this::adjustOriginalCreatedTime);
 
@@ -141,6 +141,11 @@ public class Transformer {
         });
     }
 
+    private boolean isJPGImage(File dir, File file){
+        return file.getName().endsWith(".JPG") ||
+                file.getName().endsWith(".jpg");
+    }
+
     private boolean isLivePhoto(File dir, File file) {
         try {
             if (file.getName().endsWith(".MOV"))
@@ -171,7 +176,10 @@ public class Transformer {
                     errorList.add(errorMessage);
                     logger.error(errorMessage);
                 }
+                String oldName = file.getName();
+                File newFile = new File(dir.getAbsolutePath() + File.separator+"tr:"+oldName);
                 file.delete();
+                newFile.renameTo(new File(dir.getAbsolutePath() + File.separator + oldName));
 
                 pbTransform.step();
             }catch (Exception ex){
@@ -270,8 +278,9 @@ public class Transformer {
         }
         if(dataTime == null)
             return false;
-        else
+        else{
             return this.writeExifMetadata.changeOriginalDateMetadata(file, new File(file.getParent() + File.separator + "tr:" + file.getName()), dataTime);
+        }
     }
 
 }
